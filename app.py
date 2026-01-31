@@ -26,10 +26,9 @@ with c2:
 st.success(f"Usted deja de pagar {deduccion_max:,.2f} € a Hacienda. Su cuota final se reduce a {cuota - deduccion_max:,.2f} €.")
 st.info("Operación blindada con Informe Motivado y Seguro de Contingencia.")
 import streamlit as st
-from gspread_streamlit import GoogleSheetsConnection
-
+from streamlit_gsheets import GSheetsConnection
 # 1. Conexión usando los "Misterios" (Secrets) que configuramos
-conn = st.connection("gsheets", type=GoogleSheetsConnection)
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 st.title("🚀 Prueba de Conexión Dertogest")
 
