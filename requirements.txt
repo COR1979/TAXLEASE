@@ -1,3 +1,2 @@
-gspread
-gspread-streamlit
 st-gsheets-connection
+gspread
