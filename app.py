@@ -1,45 +1,81 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
 
-st.set_page_config(page_title="DERTOGEST - Optimización Fiscal", page_icon="📊")
+st.set_page_config(page_title="TaxLease Platform v4.0", layout="wide")
 
-st.title("📊 DERTOGEST, S.L.")
-st.header("Calculadora de Optimización (Art. 39.7 LIS)")
+st.title("🏛️ TaxLease Platform-Manager")
 
-perfil = st.radio("Perfil del Inversor:", ["Profesional/Empresario (IRPF)", "Sociedad (IS)"])
-cuota = st.number_input("Cuota Íntegra estimada (€):", min_value=0, value=10000, step=1000)
+# --- MENÚ LATERAL ---
+menu = ["📊 Calculadora Fiscal", "🤝 Partners", "💰 Inversores", "🚀 Nueva Operación"]
+choice = st.sidebar.selectbox("Menú de Gestión", menu)
 
-# Lógica según tus informes estratégicos
-# El Art. 39.1 LIS permite elevar el límite al 50% si la inversión es relevante [cite: 13, 14, 39, 81]
-deduccion_max = cuota * 0.50 
-inversion_optima = deduccion_max / 1.20 
-ahorro_neto = deduccion_max - inversion_optima
+# ==========================================
+# SECCIÓN: CALCULADORA DE AHORRO FISCAL
+# ==========================================
+if choice == "📊 Calculadora Fiscal":
+    st.header("🧮 Calculadora de Impacto Fiscal (Tax Lease)")
+    st.info("Utiliza esta herramienta para determinar la inversión óptima de un cliente.")
 
-st.divider()
-c1, c2 = st.columns(2)
-with c1:
-    st.metric("Inversión Óptima", f"{inversion_optima:,.2f} €")
-    st.caption("Aportación antes del 31 de diciembre.")
-with c2:
-    st.metric("Beneficio Neto (20%)", f"{ahorro_neto:,.2f} €")
-    st.caption("Ganancia neta garantizada[cite: 12, 29, 74].")
-
-st.success(f"Usted deja de pagar {deduccion_max:,.2f} € a Hacienda. Su cuota final se reduce a {cuota - deduccion_max:,.2f} €.")
-st.info("Operación blindada con Informe Motivado y Seguro de Contingencia.")
-import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-# 1. Conexión usando los "Misterios" (Secrets) que configuramos
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-st.title("🚀 Prueba de Conexión Dertogest")
-
-if st.button("¡Pulsar para conectar con el Excel!"):
-    try:
-        # 2. Intentamos escribir en la celda A1 de la pestaña 'Partners'
-        # Cambia 'Partners' por el nombre exacto de tu primera pestaña
-        conn.update(worksheet="Partners", data=[["¡CONEXIÓN ÉXITOSA!"]])
+    # --- ENTRADA DE DATOS ---
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Datos del Cliente")
+        facturacion = st.number_input("Facturación Anual de la Empresa (€)", min_value=0, value=25000000, step=1000000)
+        cuota_is_inicial = st.number_input("Cuota Íntegra IS Inicial (€)", min_value=0, value=100000, step=10000)
         
-        st.success("✅ ¡MAGIA! El robot ha escrito en tu Excel.")
-        st.balloons()
-    except Exception as e:
-        st.error(f"❌ Ups, algo ha fallado: {e}")
-        st.info("Revisa si el correo del robot tiene permiso de 'Editor' en el botón azul de Compartir del Excel.")
+        # Lógica de Límites Fiscales
+        es_gran_empresa = facturacion > 20000000
+        limite_pct = 0.15 if es_gran_empresa else 0.50
+        tipo_empresa = "Grande Empresa (>20M€)" if es_gran_empresa else "Pyme / Resto"
+
+    # --- CÁLCULOS INTERNOS ---
+    max_deduccion_posible = cuota_is_inicial * limite_pct
+    # Inversión Óptima para agotar el cupo (Rentabilidad 20% fija)
+    inv_optima = max_deduccion_posible / 1.20
+    rentabilidad_esperada = inv_optima * 0.20
+
+    with col2:
+        st.subheader("Diagnóstico de Capacidad")
+        st.write(f"**Perfil:** {tipo_empresa}")
+        st.write(f"**Límite Legal:** {limite_pct*100:.0f}% de la cuota íntegra.")
+        
+        st.metric("Deducción Máxima", f"{max_deduccion_posible:,.2f} €")
+        st.success(f"🎯 **Inversión Óptima Sugerida:** {inv_optima:,.2f} €")
+
+    st.divider()
+
+    # --- SIMULADOR DE IMPACTO ---
+    st.subheader("📉 Simulador de Impacto Final")
+    
+    # Slider para que el usuario pueda ajustar el importe real que el cliente quiere invertir
+    monto_final = st.slider("Ajustar Inversión Real (€)", 0.0, float(inv_optima * 1.5), float(inv_optima))
+    
+    # Resultados del simulador
+    deduccion_generada = monto_final * 1.20
+    ahorro_neto_cliente = monto_final * 0.20
+    cuota_final_pagar = cuota_is_inicial - deduccion_generada
+
+    # Asegurar que la cuota no sea negativa (solo a efectos visuales)
+    cuota_final_pagar = max(0.0, cuota_final_pagar)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Deducción Generada", f"{deduccion_generada:,.2f} €")
+    with c2:
+        st.metric("Ahorro Neto (Beneficio)", f"{ahorro_neto_cliente:,.2f} €", delta="20% neto")
+    with c3:
+        st.metric("Nueva Cuota a Pagar", f"{cuota_final_pagar:,.2f} €", delta=f"-{deduccion_generada:,.2f} €", delta_color="normal")
+
+    # --- MENSAJE COMERCIAL ---
+    if cuota_final_pagar < (cuota_is_inicial * 0.5):
+        st.warning("⚠️ Atención: La inversión supera el límite estándar de deducción. Revisar con fiscalista.")
+
+# ==========================================
+# RESTO DE SECCIONES (Partners, Inversores...)
+# ==========================================
+elif choice == "🤝 Partners":
+    st.header("Gestión de Partners")
+    st.write("Consulta tus datos directamente en el Excel.")
+    # (Aquí va tu código de visualización de Partners)
